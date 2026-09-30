@@ -24,7 +24,7 @@ docker compose stop
 
 ## Configuration
 
-All settings live in `.env`. `TALQO_VERSION` pins the image tag, `TALQO_PORT` is the host port, and the two secrets are passed to the app and Postgres.
+All settings live in `.env`. `TALQO_VERSION` is the image tag and defaults to `latest`, `TALQO_PORT` is the host port, and the two secrets are passed to the app and Postgres.
 
 `APP_SECRET` encrypts the AI provider API keys you enter in the dashboard with AES-256-GCM. Talqo will not start until you replace the placeholder, because it must be base64url and at least 32 bytes decoded.
 
@@ -34,14 +34,14 @@ The port binds to loopback only, so you need a reverse proxy on the same host to
 
 ## Upgrades
 
-Change `TALQO_VERSION`, then:
+While `TALQO_VERSION=latest`:
 
 ```sh
 docker compose pull
 docker compose up -d
 ```
 
-Migrations run on start and are not reversible. Take a database dump before a major version bump.
+Migrations run on start and are not reversible, so tracking `latest` means each pull can change your database schema. Take a dump first, or set `TALQO_VERSION` to a specific tag to control exactly when that happens.
 
 ## Gotchas
 
