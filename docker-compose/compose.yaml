@@ -28,10 +28,11 @@ services:
       POSTGRES_USER: talqo
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 2s
+      start_interval: 1s
+      start_period: 30s
+      interval: 30s
       timeout: 5s
-      retries: 15
-      start_period: 5s
+      retries: 3
     shm_size: 128mb
     volumes:
       - postgres-data:/var/lib/postgresql
