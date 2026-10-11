@@ -1,0 +1,18 @@
+{{- if eq (.Values.persistence.uploads.existingClaim | default "") "" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "talqo.fullname" . }}-uploads
+  labels:
+    {{- include "talqo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with .Values.persistence.uploads.storageClassName }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.uploads.size | quote }}
+{{- end }}

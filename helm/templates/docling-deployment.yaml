@@ -1,0 +1,74 @@
+{{- if .Values.docling.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "talqo.fullname" . }}-docling
+  labels:
+    {{- include "talqo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: docling
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "talqo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: docling
+  template:
+    metadata:
+      labels:
+        {{- include "talqo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: docling
+    spec:
+      serviceAccountName: {{ include "talqo.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      # Image runs as 1001. Boots read-only; models load on first use,
+      # so the startup probe budget covers model warm-up, not just boot.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: docling
+          image: {{ printf "%s:%s" .Values.docling.image.repository .Values.docling.image.tag | quote }}
+          imagePullPolicy: {{ .Values.docling.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5001
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.docling.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

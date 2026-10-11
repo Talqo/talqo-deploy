@@ -1,0 +1,19 @@
+{{- if .Values.docling.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "talqo.fullname" . }}-docling
+  labels:
+    {{- include "talqo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: docling
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5001
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "talqo.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: docling
+{{- end }}
