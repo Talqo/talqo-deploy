@@ -51,12 +51,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 {{- end }}
 
-{{/* Bitnami service host for the app's DATABASE_URL. */}}
+{{/* Bitnami service host for the app's DATABASE_URL. Mirrors Bitnami's
+common.names.fullname (Release.Name + subchart name), not ours. */}}
 {{- define "talqo.postgresqlHost" -}}
 {{- if .Values.postgresql.fullnameOverride }}
-{{- .Values.postgresql.fullnameOverride }}
+{{- .Values.postgresql.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
-{{- printf "%s-postgresql" (include "talqo.fullname" .) }}
+{{- $name := default "postgresql" .Values.postgresql.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 {{- end }}
 

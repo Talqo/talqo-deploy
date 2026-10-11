@@ -4,8 +4,8 @@ Dashboard:
 {{- if .Values.ingress.enabled }}
   https://{{ .Values.ingress.host }}
 {{- else }}
-  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "talqo.fullname" . }} {{ .Values.service.port }}:80
-  then open http://127.0.0.1:{{ .Values.service.port }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "talqo.fullname" . }} 3000:{{ .Values.service.port }}
+  then open http://127.0.0.1:3000
 {{- end }}
 
 Back up the APP_SECRET value and both volumes (uploads, postgres data).
