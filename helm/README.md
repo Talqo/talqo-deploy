@@ -1,6 +1,6 @@
 # Talqo on Kubernetes (Helm)
 
-Talqo, Postgres with pgvector (Bitnami subchart), and Docling as one chart. Mirrors `docker-compose/` defaults.
+Talqo, Postgres with pgvector 0.8.7 (Bitnami subchart), and Docling as one chart. Mirrors `docker-compose/` defaults.
 
 Subchart tarballs are gitignored; fetch once after cloning:
 
@@ -24,7 +24,7 @@ helm install talqo ./helm -n talqo \
   --set image.tag='1.2.3'
 ```
 
-Only variable references land in shell history, never the values. `auth.password` must match the password in `DATABASE_URL`. The superuser password seeds the pgvector extension at first boot; the app connects as the least-privilege user.
+Only variable references land in shell history, never the values. `auth.password` must match the password in `DATABASE_URL`. The `talqo-postgresql` host assumes the `talqo` release name; with another release name use `<release>-postgresql`. The superuser password seeds the pgvector extension at first boot; the app connects as the least-privilege user.
 
 Back up `APP_SECRET` (base64url, 32+ bytes) and the postgres password; both are effectively immutable after first start.
 
