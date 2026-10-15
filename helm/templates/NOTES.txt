@@ -1,0 +1,13 @@
+Talqo is starting. Migrations run inside the app container before it serves traffic.
+
+Dashboard:
+{{- if .Values.ingress.enabled }}
+  https://{{ .Values.ingress.host }}
+{{- else }}
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "talqo.fullname" . }} 3000:{{ .Values.service.port }}
+  then open http://127.0.0.1:3000
+{{- end }}
+
+Back up the APP_SECRET value and both volumes (uploads, postgres data).
+APP_SECRET and the postgres password are effectively immutable: changing
+either after first start locks the app out of its own data.

@@ -1,0 +1,115 @@
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/talqo/talqo
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# Base64url, 32+ bytes. Immutable: encrypts stored provider keys.
+appSecret: ""
+
+# Pre-created Secret with APP_SECRET and DATABASE_URL. Postgres credentials
+# stay in postgresql.auth.* (Bitnami manages its own Secret from them).
+existingSecret: ""
+
+# Bundled Postgres via the Bitnami subchart (18.6.0, native value names).
+# The init script creates the pgvector extension as superuser at first boot;
+# the app connects as the least-privilege user and needs no superuser.
+postgresql:
+  enabled: true
+  image:
+    digest: sha256:ec3840dfcf0caf786877a67d83bc3ebb0c042fd92445c062ec89c51245290942
+  auth:
+    enablePostgresUser: true
+    username: talqo
+    database: talqo
+    # URL-safe only. Immutable after first start.
+    password: ""
+    postgresPassword: ""
+  primary:
+    initdb:
+      scripts:
+        # Reads the superuser password from Bitnami's mounted secret file
+        # instead of initdb.user/password values, which land in plaintext env.
+        # Re-verify path and default key on Bitnami chart bumps.
+        10-vector.sh: |
+          #!/bin/sh
+          set -e
+          PGPASSWORD="$(cat /opt/bitnami/postgresql/secrets/postgres-password)" psql -U postgres -d "$POSTGRESQL_DATABASE" -c "CREATE EXTENSION IF NOT EXISTS vector;"
+    persistence:
+      size: 10Gi
+      storageClass: ""
+      existingClaim: ""
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+
+# Required when postgresql.enabled=false. Must include pgvector.
+externalDatabase:
+  url: ""
+
+docling:
+  enabled: true
+  image:
+    repository: quay.io/docling-project/docling-serve-cpu
+    tag: v1.35.0
+    pullPolicy: IfNotPresent
+  # Required when docling.enabled=false.
+  externalUrl: ""
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+persistence:
+  uploads:
+    size: 5Gi
+    storageClassName: ""
+    # Must be ReadWriteMany for replicaCount above 1.
+    existingClaim: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  # Serve at the domain root, not a subfolder.
+  host: ""
+  tls: []
+  annotations: {}
+
+# Null means the app default. Only non-null values become env vars.
+config:
+  chatDailyMessageLimit: null
+  chatMaxConcurrentGenerationsPerIp: null
+  chatMaxInputCharacters: null
+  chatMaxOutputTokens: null
+  chatGenerationTimeoutSeconds: null
+  trustedProxyCidrs: ""
+  rateLimitIpv6PrefixLength: null
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+serviceAccount:
+  create: true
+  name: ""

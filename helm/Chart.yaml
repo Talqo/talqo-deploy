@@ -1,0 +1,21 @@
+apiVersion: v2
+name: talqo
+description: Talqo AI agent, Postgres with pgvector, and Docling document conversion
+type: application
+version: 0.1.0
+appVersion: latest
+keywords:
+  - ai
+  - chatbot
+  - rag
+home: https://talqo.chat
+sources:
+  - https://github.com/Talqo/talqo
+maintainers:
+  - name: Talqo
+kubeVersion: ">= 1.28.0"
+dependencies:
+  - name: postgresql
+    version: 18.6.0
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: postgresql.enabled

@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "talqo.fullname" . }}
+  labels:
+    {{- include "talqo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # Recreate: uploads live on a ReadWriteOnce volume, so a second pod can
+  # never mount it. Use a ReadWriteMany existingClaim to run replicas > 1.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "talqo.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        {{- include "talqo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+    spec:
+      serviceAccountName: {{ include "talqo.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      # Image runs as bun (1000). fsGroup makes fresh volumes writable.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: app
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: APP_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "talqo.secretName" . }}
+                  key: APP_SECRET
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "talqo.secretName" . }}
+                  key: DATABASE_URL
+            - name: TALQO_DOCLING_URL
+              value: {{ include "talqo.doclingUrl" . | quote }}
+            {{- with .Values.config.chatDailyMessageLimit }}
+            - name: TALQO_CHAT_DAILY_MESSAGE_LIMIT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.chatMaxConcurrentGenerationsPerIp }}
+            - name: TALQO_CHAT_MAX_CONCURRENT_GENERATIONS_PER_IP
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.chatMaxInputCharacters }}
+            - name: TALQO_CHAT_MAX_INPUT_CHARACTERS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.chatMaxOutputTokens }}
+            - name: TALQO_CHAT_MAX_OUTPUT_TOKENS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.chatGenerationTimeoutSeconds }}
+            - name: TALQO_CHAT_GENERATION_TIMEOUT_SECONDS
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.config.trustedProxyCidrs }}
+            - name: TALQO_TRUSTED_PROXY_CIDRS
+              value: {{ .Values.config.trustedProxyCidrs | quote }}
+            {{- end }}
+            {{- with .Values.config.rateLimitIpv6PrefixLength }}
+            - name: TALQO_RATE_LIMIT_IPV6_PREFIX_LENGTH
+              value: {{ . | quote }}
+            {{- end }}
+          # Migrations run inside the image before the server starts, so the
+          # startup probe budget must cover them, not just process boot.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.uploads.existingClaim | default (printf "%s-uploads" (include "talqo.fullname" .)) }}
